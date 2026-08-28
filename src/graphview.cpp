@@ -7,10 +7,23 @@
 GraphView::GraphView(QQuickItem *parent)
     : QQuickFramebufferObject(parent)
 {
-    // Mirror the item vertically: an FBO's texture has its origin in the bottom
-    // left, whereas Qt Quick items count y downwards.  Qt already accounts for
-    // this, so all we do here is make sure the item repaints when it resizes.
-    setMirrorVertically(false);
+    // An OpenGL framebuffer has its origin in the BOTTOM left, while Qt Quick
+    // items count y downwards from the TOP left.  Left alone (the default,
+    // mirrorVertically == false) Qt hands the texture to the scene graph as-is,
+    // so clip-space y = +1 ends up at the item's *bottom* edge and everything
+    // the renderer draws appears upside down.
+    //
+    // Setting this to true presents the FBO with a top-left origin, which lets
+    // the whole rest of the class - toWorld(), toItem(), nodeAt(), and the
+    // y-down orthographic projection in GraphRenderer::synchronize() - share one
+    // consistent convention with Qt's item coordinates.
+    //
+    // This is easy to get wrong *and* easy to miss: a graph whose node positions
+    // happen to be symmetric about the horizontal axis (a circular layout, a
+    // regular grid, the Petersen graph) looks perfectly correct while flipped,
+    // because the mirrored discs land back on top of the un-mirrored ones.  Test
+    // orientation with something asymmetric, such as Generate > Tree.
+    setMirrorVertically(true);
     setTextureFollowsItemSize(true);
 }
 

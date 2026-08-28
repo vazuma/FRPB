@@ -217,7 +217,33 @@ Two draw calls per frame, regardless of graph size:
   itself is cut out in the fragment shader from the distance to the quad centre,
   antialiased with `fwidth`, so circles stay perfectly smooth at any zoom.
 
-### 8. Re-skinning controls
+### 8. Framebuffer orientation, and how it hides from you
+
+An OpenGL framebuffer has its origin in the **bottom left**. A Qt Quick item
+counts y **downwards from the top left**. `QQuickFramebufferObject` does not
+reconcile those for you by default: with `mirrorVertically` left at its default
+`false`, clip-space y = +1 lands at the item's *bottom* edge, and everything the
+renderer draws comes out upside down.
+
+This project sets `setMirrorVertically(true)` so that one convention — y grows
+downwards, exactly like item coordinates — holds across `toWorld()`, `toItem()`,
+`nodeAt()`, the label positions in QML, and the projection matrix.
+
+The reason this gets its own section is that a vertical flip is remarkably good
+at hiding. Get it wrong and the OpenGL discs are mirrored while the QML labels
+are not — but if your test graph is **symmetric about the horizontal axis**, the
+mirrored discs land exactly on top of where the un-mirrored ones would be, and
+the picture looks perfect. A circular layout, a regular grid and the Petersen
+graph are all invariant this way. The bug only surfaces when you interact:
+clicking a node selects its mirror twin, and dragging one moves a different node
+in the opposite direction.
+
+Test orientation with something **asymmetric** — `Generate ▸ Tree` is the
+clearest — and confirm the root is at the top before trusting anything else:
+
+![A rooted tree, the asymmetric orientation check](docs/screenshot-tree.png)
+
+### 9. Re-skinning controls
 
 Qt Quick Controls' default *Basic* style is light. Every control exposes its
 chrome as a replaceable item, so `ParameterDialog.qml` assigns its own
@@ -254,6 +280,7 @@ Good next exercises, roughly in order of difficulty:
 * `qmllint` reports unresolved-type warnings inside `Viewport.qml` because Qt
   6.4's type registration does not describe `QQuickFramebufferObject` subclasses
   fully. The app runs correctly; the warnings are a tooling gap.
-* If the viewport ever renders upside down on your driver, the flip lives in one
-  place: the `ortho()` call in `GraphRenderer::synchronize()` deliberately
-  passes `bottom > top` so world *y* grows downwards like Qt's item coordinates.
+* Orientation is governed by `setMirrorVertically(true)` in the `GraphView`
+  constructor, working together with the y-down `ortho()` call in
+  `GraphRenderer::synchronize()`. Change one without the other and the viewport
+  renders upside down. See *Framebuffer orientation* above for why.
